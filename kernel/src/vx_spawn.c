@@ -51,6 +51,20 @@ typedef struct {
 	uint32_t remaining_warps;
 } wspawn_threads_args_t;
 
+typedef struct
+{
+  vx_kernel_func_cb callback;
+  const void *arg;
+  uint32_t start_block_x;
+  uint32_t start_block_y;
+  uint32_t end_block_x;
+  uint32_t end_block_y;
+  uint32_t warp_batches;
+  uint32_t remaining_warps;
+  uint32_t warps_per_group;
+  uint32_t remaining_mask;
+} wspawn_spatial_args_t;
+
 static void __attribute__ ((noinline)) process_threads() {
   wspawn_threads_args_t* targs = (wspawn_threads_args_t*)csr_read(VX_CSR_MSCRATCH);
 
@@ -136,6 +150,51 @@ static void __attribute__ ((noinline)) process_thread_groups() {
   }
 }
 
+static void __attribute__((noinline)) process_thread_groups_spatial()
+{
+  wspawn_spatial_args_t *targs = (wspawn_spatial_args_t *)csr_read(VX_CSR_MSCRATCH);
+
+  uint32_t threads_per_warp = vx_num_threads();
+  uint32_t warp_id = vx_warp_id();
+  uint32_t thread_id = vx_thread_id();
+
+  uint32_t warps_per_group = targs->warps_per_group;
+
+  // Calculate local group and task IDs
+  uint32_t local_group_id = warp_id / warps_per_group;
+  uint32_t group_warp_id = warp_id - local_group_id * warps_per_group;
+  uint32_t local_task_id = group_warp_id * threads_per_warp + thread_id;
+
+  // Set local group ID
+  __local_group_id = local_group_id;
+
+  // Calculate thread indices
+  threadIdx.x = local_task_id % blockDim.x;
+  threadIdx.y = (local_task_id / blockDim.x) % blockDim.y;
+  threadIdx.z = local_task_id / (blockDim.x * blockDim.y);
+
+  // Retrieve kernel function callback and arguments
+  vx_kernel_func_cb callback = targs->callback;
+  const void *arg = targs->arg;
+
+  // Loop through blocks in the x and y dimensions
+  for (uint32_t block_y = targs->start_block_y; block_y < targs->end_block_y; ++block_y)
+  {
+    for (uint32_t block_x = targs->start_block_x; block_x < targs->end_block_x; ++block_x)
+    {
+      for (uint32_t block_z = 0; block_z < gridDim.z; ++block_z)
+      {
+        // Set block indices
+        blockIdx.x = block_x;
+        blockIdx.y = block_y;
+        blockIdx.z = block_z;
+        // Call kernel function
+        callback((void *)arg);
+      }
+    }
+  }
+}
+
 static void __attribute__ ((noinline)) process_thread_groups_stub() {
   wspawn_groups_args_t* targs = (wspawn_groups_args_t*)csr_read(VX_CSR_MSCRATCH);
   uint32_t warps_per_group = targs->warps_per_group;
@@ -149,6 +208,25 @@ static void __attribute__ ((noinline)) process_thread_groups_stub() {
 
   // process thread groups
   process_thread_groups();
+
+  // disable all warps except warp0
+  vx_tmc(0 == vx_warp_id());
+}
+
+static void __attribute__((noinline)) process_thread_groups_spatial_stub()
+{
+  wspawn_spatial_args_t *targs = (wspawn_spatial_args_t *)csr_read(VX_CSR_MSCRATCH);
+  uint32_t warps_per_group = targs->warps_per_group;
+  uint32_t remaining_mask = targs->remaining_mask;
+  uint32_t warp_id = vx_warp_id();
+  uint32_t group_warp_id = warp_id % warps_per_group;
+  uint32_t threads_mask = (group_warp_id == warps_per_group - 1) ? remaining_mask : -1;
+
+  // activate threads
+  vx_tmc(threads_mask);
+
+  // process thread groups
+  process_thread_groups_spatial();
 
   // disable all warps except warp0
   vx_tmc(0 == vx_warp_id());
@@ -319,6 +397,131 @@ int vx_spawn_threads(uint32_t dimension,
   vx_wspawn(1, 0);
 
   return 0;
+}
+
+// spatial spawn
+int vx_spawn_threads_spatial(uint32_t dimension,
+                     const uint32_t *grid_dim,
+                     const uint32_t *block_dim,
+                     vx_kernel_func_cb kernel_func,
+                     const void *arg)
+{
+  vx_printf("SPATIAL MODE\n");
+  // calculate number of groups and group size
+  uint32_t num_groups = 1;
+  uint32_t group_size = 1;
+  for (uint32_t i = 0; i < 3; ++i)
+  {
+    uint32_t gd = (grid_dim && (i < dimension)) ? grid_dim[i] : 1;
+    uint32_t bd = (block_dim && (i < dimension)) ? block_dim[i] : 1;
+    num_groups *= gd;
+    group_size *= bd;
+    gridDim.m[i] = gd;
+    blockDim.m[i] = bd;
+  }
+
+  // device specifications
+  uint32_t num_cores = vx_num_cores();
+  uint32_t warps_per_core = vx_num_warps();
+  uint32_t threads_per_warp = vx_num_threads();
+  uint32_t core_id = vx_core_id();
+
+  // check group size
+  uint32_t threads_per_core = warps_per_core * threads_per_warp;
+  if (threads_per_core < group_size)
+  {
+    vx_printf("error: group_size > threads_per_core (%d,%d)\n", group_size, threads_per_core);
+    return -1;
+  }
+
+  // calculate number of cores per dimension in x y plane
+  uint32_t core_grid_dim = (uint32_t)sqrt(num_cores);
+  if (core_grid_dim * core_grid_dim != num_cores)
+  {
+    vx_printf("error: num_cores must have an whole number sqrt: %d\n", num_cores);
+    return -1;
+  }
+
+  // calculate number of warps per group
+  uint32_t warps_per_group = group_size / threads_per_warp;
+  uint32_t remaining_threads = group_size - warps_per_group * threads_per_warp;
+  uint32_t remaining_mask = -1;
+  if (remaining_threads != 0)
+  {
+    vx_printf("error: group_size must be a multipule of threads_per_warp (%d,%d)\n", group_size, threads_per_warp);
+    return -1;
+  }
+
+  // calculate necessary active cores based on grid dimensions
+  uint32_t active_cores_x = MIN((gridDim.x + core_grid_dim - 1) / core_grid_dim, core_grid_dim);
+  uint32_t active_cores_y = MIN((gridDim.y + core_grid_dim - 1) / core_grid_dim, core_grid_dim);
+
+  // check if the current core is active
+  uint32_t core_x = core_id % core_grid_dim;
+  uint32_t core_y = core_id / core_grid_dim;
+  if (core_x >= active_cores_x || core_y >= active_cores_y)
+  {
+    return 0;
+  }
+
+  uint32_t total_groups_x = gridDim.x / active_cores_x;
+  uint32_t total_groups_y = gridDim.y / active_cores_y;
+  uint32_t remaining_groups_x = gridDim.x % active_cores_x;
+  uint32_t remaining_groups_y = gridDim.y % active_cores_y;
+
+  uint32_t start_block_x = core_x * total_groups_x + MIN(core_x, remaining_groups_x);
+  uint32_t start_block_y = core_y * total_groups_y + MIN(core_y, remaining_groups_y);
+  uint32_t end_block_x = start_block_x + total_groups_x + (core_x < remaining_groups_x);
+  uint32_t end_block_y = start_block_y + total_groups_y + (core_y < remaining_groups_y);
+
+  // total number of groups per core
+  uint32_t total_groups_per_core = (end_block_x - start_block_x) * (end_block_y - start_block_y) * gridDim.z;
+
+  // Calculate the number of warps to activate
+  uint32_t total_warps_per_core = total_groups_per_core * warps_per_group;
+  uint32_t active_warps = total_warps_per_core;
+  uint32_t warp_batches = 1;
+  uint32_t remaining_warps = 0;
+
+  if (active_warps > warps_per_core)
+  {
+    active_warps = warps_per_core;
+    warp_batches = total_warps_per_core / active_warps;
+    remaining_warps = total_warps_per_core % active_warps;
+  }
+
+  // calculate offsets for group distribution
+  uint32_t group_offset = core_id * total_groups_per_core + MIN(core_id, remaining_groups_per_core);
+
+  // Set scheduler arguments
+  wspawn_spatial_args_t wspawn_args = {
+      .callback = kernel_func,
+      .arg = arg,
+      .start_block_x = start_block_x,
+      .start_block_y = start_block_y,
+      .end_block_x = end_block_x,
+      .end_block_y = end_block_y,
+      .warp_batches = warp_batches,
+      .remaining_warps = remaining_warps,
+      .warps_per_group = warps_per_group,
+      .remaining_mask = remaining_mask};
+  csr_write(VX_CSR_MSCRATCH, &wspawn_args);
+
+  // set global variables
+  __warps_per_group = warps_per_group;
+
+  // execute callback on other warps
+  vx_wspawn(active_warps, process_thread_groups_spatial_stub);
+
+  // execute callback on warp0
+  process_thread_groups_spatial_stub();
+
+
+
+// wait for spawned warps to complete
+vx_wspawn(1, 0);
+
+return 0;
 }
 
 #ifdef __cplusplus
