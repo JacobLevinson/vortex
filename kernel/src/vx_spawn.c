@@ -65,6 +65,21 @@ typedef struct
   uint32_t remaining_mask;
 } wspawn_spatial_args_t;
 
+// Function to calculate the integer square root using Newton-Raphson method
+uint32_t integer_sqrt(uint32_t S)
+{
+  if (S == 0)
+    return 0;
+  uint32_t x = S;
+  uint32_t y = (x + 1) / 2;
+  while (y < x)
+  {
+    x = y;
+    y = (x + S / x) / 2;
+  }
+  return x;
+}
+
 static void __attribute__ ((noinline)) process_threads() {
   wspawn_threads_args_t* targs = (wspawn_threads_args_t*)csr_read(VX_CSR_MSCRATCH);
 
@@ -435,7 +450,7 @@ int vx_spawn_threads_spatial(uint32_t dimension,
   }
 
   // calculate number of cores per dimension in x y plane
-  uint32_t core_grid_dim = (uint32_t)sqrt(num_cores);
+  uint32_t core_grid_dim = integer_sqrt(num_cores);
   if (core_grid_dim * core_grid_dim != num_cores)
   {
     vx_printf("error: num_cores must have an whole number sqrt: %d\n", num_cores);
@@ -489,9 +504,6 @@ int vx_spawn_threads_spatial(uint32_t dimension,
     warp_batches = total_warps_per_core / active_warps;
     remaining_warps = total_warps_per_core % active_warps;
   }
-
-  // calculate offsets for group distribution
-  uint32_t group_offset = core_id * total_groups_per_core + MIN(core_id, remaining_groups_per_core);
 
   // Set scheduler arguments
   wspawn_spatial_args_t wspawn_args = {
