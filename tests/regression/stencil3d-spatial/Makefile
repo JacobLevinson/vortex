@@ -1,7 +1,7 @@
 ROOT_DIR := $(realpath ../../..)
 include $(ROOT_DIR)/config.mk
 
-PROJECT := stencil3d
+PROJECT := stencil3d-spatial
 
 SRC_DIR := $(VORTEX_HOME)/tests/regression/$(PROJECT)
 
@@ -9,6 +9,6 @@ SRCS := $(SRC_DIR)/main.cpp
 
 VX_SRCS := $(SRC_DIR)/kernel.cpp
 
-OPTS ?= -n16-b2 # 32x32x32 matrix and block size of 2x2x2
+OPTS ?= -n16-b2 # 16x16x16 matrix and block size of 2x2x2
 
 include ../common.mk

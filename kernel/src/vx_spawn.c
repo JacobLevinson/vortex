@@ -470,7 +470,7 @@ int vx_spawn_threads_spatial(uint32_t dimension,
   // calculate necessary active cores based on grid dimensions
   uint32_t active_cores_x = MIN((gridDim.x + core_grid_dim - 1) / core_grid_dim, core_grid_dim);
   uint32_t active_cores_y = MIN((gridDim.y + core_grid_dim - 1) / core_grid_dim, core_grid_dim);
-
+  vx_printf("active_cores_x: %d, active_cores_y: %d\n", active_cores_x, active_cores_y);
   // check if the current core is active
   uint32_t core_x = core_id % core_grid_dim;
   uint32_t core_y = core_id / core_grid_dim;
@@ -478,7 +478,7 @@ int vx_spawn_threads_spatial(uint32_t dimension,
   {
     return 0;
   }
-
+  vx_printf("core id %d is active\n", core_id);
   uint32_t total_groups_x = gridDim.x / active_cores_x;
   uint32_t total_groups_y = gridDim.y / active_cores_y;
   uint32_t remaining_groups_x = gridDim.x % active_cores_x;
@@ -491,7 +491,7 @@ int vx_spawn_threads_spatial(uint32_t dimension,
 
   // total number of groups per core
   uint32_t total_groups_per_core = (end_block_x - start_block_x) * (end_block_y - start_block_y) * gridDim.z;
-
+  vx_printf("total_groups_per_core: %d\n", total_groups_per_core);
   // Calculate the number of warps to activate
   uint32_t total_warps_per_core = total_groups_per_core * warps_per_group;
   uint32_t active_warps = total_warps_per_core;
@@ -504,6 +504,20 @@ int vx_spawn_threads_spatial(uint32_t dimension,
     warp_batches = total_warps_per_core / active_warps;
     remaining_warps = total_warps_per_core % active_warps;
   }
+
+  // print out all wspawn_args
+  vx_printf("kernel_func: %p\n", kernel_func);
+  vx_printf("arg: %p\n", arg);
+  vx_printf("start_block_x: %d\n", start_block_x);
+  vx_printf("start_block_y: %d\n", start_block_y);
+  vx_printf("end_block_x: %d\n", end_block_x);
+  vx_printf("end_block_y: %d\n", end_block_y);
+  vx_printf("warp_batches: %d\n", warp_batches);
+  vx_printf("remaining_warps: %d\n", remaining_warps);
+  vx_printf("warps_per_group: %d\n", warps_per_group);
+  vx_printf("remaining_mask: %d\n", remaining_mask);
+  
+
 
   // Set scheduler arguments
   wspawn_spatial_args_t wspawn_args = {
