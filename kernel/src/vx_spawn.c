@@ -468,8 +468,9 @@ int vx_spawn_threads_spatial(uint32_t dimension,
   }
 
   // calculate necessary active cores based on grid dimensions
-  uint32_t active_cores_x = MIN((gridDim.x + core_grid_dim - 1) / core_grid_dim, core_grid_dim);
-  uint32_t active_cores_y = MIN((gridDim.y + core_grid_dim - 1) / core_grid_dim, core_grid_dim);
+  uint32_t active_cores_x = MIN(gridDim.x, core_grid_dim);
+  uint32_t active_cores_y = MIN(gridDim.y, core_grid_dim);
+
   vx_printf("active_cores_x: %d, active_cores_y: %d\n", active_cores_x, active_cores_y);
   // check if the current core is active
   uint32_t core_x = core_id % core_grid_dim;
