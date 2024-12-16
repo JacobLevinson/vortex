@@ -63,6 +63,7 @@ typedef struct
   uint32_t remaining_warps;
   uint32_t warps_per_group;
   uint32_t remaining_mask;
+  uint32_t group_size;
 } wspawn_spatial_args_t;
 
 // Function to calculate the integer square root using Newton-Raphson method
@@ -172,37 +173,52 @@ static void __attribute__((noinline)) process_thread_groups_spatial()
   uint32_t threads_per_warp = vx_num_threads();
   uint32_t warp_id = vx_warp_id();
   uint32_t thread_id = vx_thread_id();
-
+  uint32_t core_id = vx_core_id(); // Get the core ID
   uint32_t warps_per_group = targs->warps_per_group;
+  uint32_t group_size = targs->group_size;
 
-  // Calculate local group and task IDs
+
+  vx_kernel_func_cb callback = targs->callback;
+  const void *arg = targs->arg;
+
+
+  // Distribute blockIdx.z among global warps
+  uint32_t total_blocks_z = gridDim.z;
+
+
+  // **Calculate local_group_id and group_warp_id**
   uint32_t local_group_id = warp_id / warps_per_group;
-  uint32_t group_warp_id = warp_id - local_group_id * warps_per_group;
+  uint32_t group_warp_id = warp_id % warps_per_group;
+
+  // Set local task ID within the group
   uint32_t local_task_id = group_warp_id * threads_per_warp + thread_id;
 
-  // Set local group ID
-  __local_group_id = local_group_id;
+  // If this warp does not have valid tasks, return early
+  if (local_task_id >= group_size)
+  {
+    return;
+  }
 
   // Calculate thread indices
   threadIdx.x = local_task_id % blockDim.x;
   threadIdx.y = (local_task_id / blockDim.x) % blockDim.y;
   threadIdx.z = local_task_id / (blockDim.x * blockDim.y);
 
-  // Retrieve kernel function callback and arguments
-  vx_kernel_func_cb callback = targs->callback;
-  const void *arg = targs->arg;
-
-  // Loop through blocks in the x and y dimensions
-  for (uint32_t block_y = targs->start_block_y; block_y < targs->end_block_y; ++block_y)
+  for (uint32_t block_z = 0; block_z < total_blocks_z; ++block_z)
   {
-    for (uint32_t block_x = targs->start_block_x; block_x < targs->end_block_x; ++block_x)
+    for (uint32_t block_y = targs->start_block_y; block_y < targs->end_block_y; ++block_y)
     {
-      for (uint32_t block_z = 0; block_z < gridDim.z; ++block_z)
+      for (uint32_t block_x = targs->start_block_x; block_x < targs->end_block_x; ++block_x)
       {
-        // Set block indices
         blockIdx.x = block_x;
         blockIdx.y = block_y;
         blockIdx.z = block_z;
+
+        // **Add Debugging Statements Here**
+        //vx_printf("Core %d, Global Warp %d, Warp %d, Batch %d, Thread %d:\n", core_id, global_warp_id, warp_id, batch, thread_id);
+        //vx_printf("  Processing BlockIdx: (%d, %d, %d)\n", blockIdx.x, blockIdx.y, blockIdx.z);
+        //vx_printf("  ThreadIdx: (%d, %d, %d)\n", threadIdx.x, threadIdx.y, threadIdx.z);
+
         // Call kernel function
         callback((void *)arg);
       }
@@ -499,24 +515,15 @@ int vx_spawn_threads_spatial(uint32_t dimension,
   uint32_t warp_batches = 1;
   uint32_t remaining_warps = 0;
 
-  if (active_warps > warps_per_core)
-  {
-    active_warps = warps_per_core;
-    warp_batches = total_warps_per_core / active_warps;
-    remaining_warps = total_warps_per_core % active_warps;
-  }
-
   // print out all wspawn_args
   vx_printf("kernel_func: %p\n", kernel_func);
   vx_printf("arg: %p\n", arg);
-  vx_printf("start_block_x: %d\n", start_block_x);
-  vx_printf("start_block_y: %d\n", start_block_y);
-  vx_printf("end_block_x: %d\n", end_block_x);
-  vx_printf("end_block_y: %d\n", end_block_y);
+  vx_printf("core %d: start_block_x: %d, end_block_x: %d, start_block_y: %d, end_block_y: %d \n", core_id, start_block_x, end_block_x, start_block_y, end_block_y);
   vx_printf("warp_batches: %d\n", warp_batches);
   vx_printf("remaining_warps: %d\n", remaining_warps);
   vx_printf("warps_per_group: %d\n", warps_per_group);
   vx_printf("remaining_mask: %d\n", remaining_mask);
+  vx_printf("active_warps: %d\n", active_warps);
   
 
 
@@ -531,7 +538,8 @@ int vx_spawn_threads_spatial(uint32_t dimension,
       .warp_batches = warp_batches,
       .remaining_warps = remaining_warps,
       .warps_per_group = warps_per_group,
-      .remaining_mask = remaining_mask};
+      .remaining_mask = remaining_mask,
+      .group_size = group_size};
   csr_write(VX_CSR_MSCRATCH, &wspawn_args);
 
   // set global variables

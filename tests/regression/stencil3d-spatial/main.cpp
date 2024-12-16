@@ -38,13 +38,13 @@ public:
     {
         return rand();
     }
-    static bool compare(int a, int b, int index, int errors)
+    static bool compare(int a, int b, uint32_t x, uint32_t y, uint32_t z, int errors)
     {
         if (a != b)
         {
-            if (errors < 100)
+            if (errors < 1000)
             {
-                printf("*** error: [%d] expected=%d, actual=%d\n", index, a, b);
+                printf("*** error at (x=%u, y=%u, z=%u): expected=%d, actual=%d\n", x, y, z, a, b);
             }
             return false;
         }
@@ -71,7 +71,7 @@ public:
     {
         return static_cast<float>(rand()) / RAND_MAX;
     }
-    static bool compare(float a, float b, int index, int errors)
+    static bool compare(float a, float b, uint32_t x, uint32_t y, uint32_t z, int errors)
     {
         union fi_t
         {
@@ -84,9 +84,9 @@ public:
         auto d = std::abs(fa.i - fb.i);
         if (d > FLOAT_ULP)
         {
-            if (errors < 100)
+            if (errors < 1000)
             {
-                printf("*** error: [%d] expected=%f, actual=%f\n", index, a, b);
+                printf("*** error at (x=%u, y=%u, z=%u): expected=%f, actual=%f\n", x, y, z, a, b);
             }
             return false;
         }
@@ -304,7 +304,10 @@ int main(int argc, char *argv[])
 
         for (uint32_t i = 0; i < h_ref.size(); ++i)
         {
-            if (!Comparator<TYPE>::compare(h_B[i], h_ref[i], i, errors))
+            uint32_t x = i % size;
+            uint32_t y = (i / size) % size;
+            uint32_t z = i / (size * size);
+            if (!Comparator<TYPE>::compare(h_B[i], h_ref[i], x, y, z, errors))
             {
                 ++errors;
             }
@@ -318,6 +321,7 @@ int main(int argc, char *argv[])
     if (errors != 0)
     {
         std::cout << "Found " << std::dec << errors << " errors!" << std::endl;
+        std::cout << "Full size: " << std::dec << h_B.size() << std::endl;
         std::cout << "FAILED!" << std::endl;
         return errors;
     }
