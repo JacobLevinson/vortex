@@ -511,7 +511,7 @@ int vx_spawn_threads_spatial(uint32_t dimension,
   vx_printf("total_groups_per_core: %d\n", total_groups_per_core);
   // Calculate the number of warps to activate
   uint32_t total_warps_per_core = total_groups_per_core * warps_per_group;
-  uint32_t active_warps = total_warps_per_core;
+  uint32_t active_warps = (group_size + threads_per_warp - 1) / threads_per_warp; // Round up
   uint32_t warp_batches = 1;
   uint32_t remaining_warps = 0;
 
