@@ -64,6 +64,7 @@ typedef struct
   uint32_t warps_per_group;
   uint32_t remaining_mask;
   uint32_t group_size;
+  uint32_t groups_at_once;
 } wspawn_spatial_args_t;
 
 // Function to calculate the integer square root using Newton-Raphson method
@@ -176,6 +177,7 @@ static void __attribute__((noinline)) process_thread_groups_spatial()
   uint32_t core_id = vx_core_id(); // Get the core ID
   uint32_t warps_per_group = targs->warps_per_group;
   uint32_t group_size = targs->group_size;
+  uint32_t groups_at_once = targs->groups_at_once;
 
 
   vx_kernel_func_cb callback = targs->callback;
@@ -188,7 +190,7 @@ static void __attribute__((noinline)) process_thread_groups_spatial()
 
   // **Calculate local_group_id and group_warp_id**
   uint32_t local_group_id = warp_id / warps_per_group;
-  uint32_t group_warp_id = warp_id % warps_per_group;
+  uint32_t group_warp_id = warp_id - local_group_id * warps_per_group; // same as warp_id % warps_per_group
 
   // Set local task ID within the group
   uint32_t local_task_id = group_warp_id * threads_per_warp + thread_id;
@@ -204,7 +206,7 @@ static void __attribute__((noinline)) process_thread_groups_spatial()
   threadIdx.y = (local_task_id / blockDim.x) % blockDim.y;
   threadIdx.z = local_task_id / (blockDim.x * blockDim.y);
 
-  for (uint32_t block_z = 0; block_z < total_blocks_z; ++block_z)
+  for (uint32_t block_z = 0; block_z < total_blocks_z; block_z += groups_at_once)
   {
     for (uint32_t block_y = targs->start_block_y; block_y < targs->end_block_y; ++block_y)
     {
@@ -212,7 +214,7 @@ static void __attribute__((noinline)) process_thread_groups_spatial()
       {
         blockIdx.x = block_x;
         blockIdx.y = block_y;
-        blockIdx.z = block_z;
+        blockIdx.z = block_z + local_group_id;
 
         // **Add Debugging Statements Here**
         //vx_printf("Core %d, Global Warp %d, Warp %d, Batch %d, Thread %d:\n", core_id, global_warp_id, warp_id, batch, thread_id);
@@ -483,6 +485,12 @@ int vx_spawn_threads_spatial(uint32_t dimension,
     return -1;
   }
 
+  uint32_t groups_at_once = threads_per_core / group_size;
+  if (threads_per_core != groups_at_once * group_size)
+  {
+    vx_printf("error: threads_per_core must be a multipule of group_size (%d,%d)\n", threads_per_core, group_size);
+  }
+
   // calculate necessary active cores based on grid dimensions
   uint32_t active_cores_x = MIN(gridDim.x, core_grid_dim);
   uint32_t active_cores_y = MIN(gridDim.y, core_grid_dim);
@@ -512,6 +520,10 @@ int vx_spawn_threads_spatial(uint32_t dimension,
   // Calculate the number of warps to activate
   uint32_t total_warps_per_core = total_groups_per_core * warps_per_group;
   uint32_t active_warps = (group_size + threads_per_warp - 1) / threads_per_warp; // Round up
+  if(groups_at_once > 1)
+  {
+    active_warps = groups_at_once * warps_per_group;
+  }
   uint32_t warp_batches = 1;
   uint32_t remaining_warps = 0;
 
@@ -524,6 +536,7 @@ int vx_spawn_threads_spatial(uint32_t dimension,
   vx_printf("warps_per_group: %d\n", warps_per_group);
   vx_printf("remaining_mask: %d\n", remaining_mask);
   vx_printf("active_warps: %d\n", active_warps);
+  vx_printf("groups_at_once: %d\n", groups_at_once);
   
 
 
@@ -539,7 +552,8 @@ int vx_spawn_threads_spatial(uint32_t dimension,
       .remaining_warps = remaining_warps,
       .warps_per_group = warps_per_group,
       .remaining_mask = remaining_mask,
-      .group_size = group_size};
+      .group_size = group_size,
+      .groups_at_once = groups_at_once};
   csr_write(VX_CSR_MSCRATCH, &wspawn_args);
 
   // set global variables
