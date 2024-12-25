@@ -59,7 +59,6 @@ typedef struct
   uint32_t start_block_y;
   uint32_t end_block_x;
   uint32_t end_block_y;
-  uint32_t warp_batches;
   uint32_t remaining_warps;
   uint32_t warps_per_group;
   uint32_t remaining_mask;
@@ -206,20 +205,20 @@ static void __attribute__((noinline)) process_thread_groups_spatial()
   threadIdx.y = (local_task_id / blockDim.x) % blockDim.y;
   threadIdx.z = local_task_id / (blockDim.x * blockDim.y);
 
-  for (uint32_t block_z = 0; block_z < total_blocks_z; block_z += groups_at_once)
+  for (uint32_t block_x = targs->start_block_x; block_x < targs->end_block_x; ++block_x)
   {
     for (uint32_t block_y = targs->start_block_y; block_y < targs->end_block_y; ++block_y)
     {
-      for (uint32_t block_x = targs->start_block_x; block_x < targs->end_block_x; ++block_x)
+      for (uint32_t block_z = 0; block_z < total_blocks_z; block_z += groups_at_once)
       {
         blockIdx.x = block_x;
         blockIdx.y = block_y;
         blockIdx.z = block_z + local_group_id;
 
         // **Add Debugging Statements Here**
-        //vx_printf("Core %d, Global Warp %d, Warp %d, Batch %d, Thread %d:\n", core_id, global_warp_id, warp_id, batch, thread_id);
-        //vx_printf("  Processing BlockIdx: (%d, %d, %d)\n", blockIdx.x, blockIdx.y, blockIdx.z);
-        //vx_printf("  ThreadIdx: (%d, %d, %d)\n", threadIdx.x, threadIdx.y, threadIdx.z);
+        // vx_printf("Core %d, Global Warp %d, Warp %d, Batch %d, Thread %d:\n", core_id, global_warp_id, warp_id, batch, thread_id);
+        // vx_printf("  Processing BlockIdx: (%d, %d, %d)\n", blockIdx.x, blockIdx.y, blockIdx.z);
+        // vx_printf("  ThreadIdx: (%d, %d, %d)\n", threadIdx.x, threadIdx.y, threadIdx.z);
 
         // Call kernel function
         callback((void *)arg);
@@ -524,14 +523,12 @@ int vx_spawn_threads_spatial(uint32_t dimension,
   {
     active_warps = groups_at_once * warps_per_group;
   }
-  uint32_t warp_batches = 1;
   uint32_t remaining_warps = 0;
 
   // print out all wspawn_args
   vx_printf("kernel_func: %p\n", kernel_func);
   vx_printf("arg: %p\n", arg);
   vx_printf("core %d: start_block_x: %d, end_block_x: %d, start_block_y: %d, end_block_y: %d \n", core_id, start_block_x, end_block_x, start_block_y, end_block_y);
-  vx_printf("warp_batches: %d\n", warp_batches);
   vx_printf("remaining_warps: %d\n", remaining_warps);
   vx_printf("warps_per_group: %d\n", warps_per_group);
   vx_printf("remaining_mask: %d\n", remaining_mask);
@@ -548,7 +545,6 @@ int vx_spawn_threads_spatial(uint32_t dimension,
       .start_block_y = start_block_y,
       .end_block_x = end_block_x,
       .end_block_y = end_block_y,
-      .warp_batches = warp_batches,
       .remaining_warps = remaining_warps,
       .warps_per_group = warps_per_group,
       .remaining_mask = remaining_mask,
