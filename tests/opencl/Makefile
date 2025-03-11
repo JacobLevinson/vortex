@@ -16,6 +16,7 @@ all:
 	$(MAKE) -C transpose
 	$(MAKE) -C spmv
 	$(MAKE) -C stencil
+	$(MAKE) -C stencil3d_cl
 	$(MAKE) -C lbm
 	$(MAKE) -C nearn
 	$(MAKE) -C guassian
@@ -38,6 +39,7 @@ run-simx:
 	$(MAKE) -C transpose run-simx
 	$(MAKE) -C spmv run-simx
 	$(MAKE) -C stencil run-simx
+	$(MAKE) -C stencil3d_cl run-simx
 	$(MAKE) -C nearn run-simx
 	$(MAKE) -C guassian run-simx
 	$(MAKE) -C kmeans run-simx
@@ -59,6 +61,7 @@ run-rtlsim:
 	$(MAKE) -C transpose run-rtlsim
 	$(MAKE) -C spmv run-rtlsim
 	$(MAKE) -C stencil run-rtlsim
+	$(MAKE) -C stencil3d_cl run-rtlsim
 	$(MAKE) -C nearn run-rtlsim
 	$(MAKE) -C guassian run-rtlsim
 	$(MAKE) -C kmeans run-rtlsim
@@ -80,6 +83,7 @@ clean:
 	$(MAKE) -C transpose clean
 	$(MAKE) -C spmv clean
 	$(MAKE) -C stencil clean
+	$(MAKE) -C stencil3d_cl clean
 	$(MAKE) -C lbm clean
 	$(MAKE) -C nearn clean
 	$(MAKE) -C guassian clean
