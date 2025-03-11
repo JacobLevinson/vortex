@@ -1,0 +1,4 @@
+make: Entering directory '/home/jacob/vortex-spatial/vortex/tests/regression/stencil3d-spatial'
+Makefile:2: /home/jacob/vortex-spatial/vortex/config.mk: No such file or directory
+make: *** No rule to make target '/home/jacob/vortex-spatial/vortex/config.mk'.  Stop.
+make: Leaving directory '/home/jacob/vortex-spatial/vortex/tests/regression/stencil3d-spatial'

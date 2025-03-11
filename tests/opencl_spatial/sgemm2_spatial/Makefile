@@ -1,0 +1,20 @@
+ROOT_DIR := $(realpath ../../..)
+include $(ROOT_DIR)/config.mk
+
+PROJECT := sgemm2_spatial
+
+SRC_DIR := $(VORTEX_HOME)/tests/opencl_spatial/$(PROJECT)
+
+SRCS := $(SRC_DIR)/main.cc
+
+common.h: $(SRC_DIR)/common.h
+	cp $< $@
+
+kernel.cl: $(SRC_DIR)/kernel.cl
+	cp $< $@
+
+KERNEL_SRCS := kernel.cl common.h
+
+OPTS ?= -n16
+
+include ../common.mk
