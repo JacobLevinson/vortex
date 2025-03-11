@@ -3,7 +3,7 @@ include $(ROOT_DIR)/config.mk
 
 PROJECT := transpose_spatial
 
-SRC_DIR := $(VORTEX_HOME)/tests/opencl/$(PROJECT)
+SRC_DIR := $(VORTEX_HOME)/tests/opencl_spatial/$(PROJECT)
 
 SRCS := $(SRC_DIR)/main.cc $(SRC_DIR)/oclUtils.cpp $(SRC_DIR)/shrUtils.cpp $(SRC_DIR)/cmd_arg_reader.cpp $(SRC_DIR)/transpose_gold.cpp
 
