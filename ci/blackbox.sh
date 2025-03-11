@@ -154,6 +154,9 @@ esac
 if [ -d "$ROOT_DIR/tests/opencl/$APP" ];
 then
     APP_PATH=$ROOT_DIR/tests/opencl/$APP
+elif [ -d "$ROOT_DIR/tests/opencl_spatial/$APP" ]; 
+then  # For opencl_spatial tests
+    APP_PATH=$ROOT_DIR/tests/opencl_spatial/$APP
 elif [ -d "$ROOT_DIR/tests/regression/$APP" ];
 then
     APP_PATH=$ROOT_DIR/tests/regression/$APP
