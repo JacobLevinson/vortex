@@ -15,6 +15,7 @@ all:
 	$(MAKE) -C dotproduct_spatial
 	$(MAKE) -C transpose_spatial
 	$(MAKE) -C spmv_spatial
+	$(MAKE) -C stencil3d_cl_spatial
 	$(MAKE) -C stencil_spatial
 	$(MAKE) -C lbm_spatial
 	$(MAKE) -C nearn_spatial
@@ -37,6 +38,7 @@ run-simx:
 	$(MAKE) -C dotproduct_spatial run-simx
 	$(MAKE) -C transpose_spatial run-simx
 	$(MAKE) -C spmv_spatial run-simx
+	$(MAKE) -C stencil3d_cl_spatial run-simx
 	$(MAKE) -C stencil_spatial run-simx
 	$(MAKE) -C nearn_spatial run-simx
 	$(MAKE) -C guassian_spatial run-simx
@@ -58,6 +60,7 @@ run-rtlsim:
 	$(MAKE) -C dotproduct_spatial run-rtlsim
 	$(MAKE) -C transpose_spatial run-rtlsim
 	$(MAKE) -C spmv_spatial run-rtlsim
+	$(MAKE) -C stencil3d_cl_spatial run-rtlsim
 	$(MAKE) -C stencil_spatial run-rtlsim
 	$(MAKE) -C nearn_spatial run-rtlsim
 	$(MAKE) -C guassian_spatial run-rtlsim
@@ -79,6 +82,7 @@ clean:
 	$(MAKE) -C dotproduct_spatial clean
 	$(MAKE) -C transpose_spatial clean
 	$(MAKE) -C spmv_spatial clean
+	$(MAKE) -C stencil3d_cl_spatial clean
 	$(MAKE) -C stencil_spatial clean
 	$(MAKE) -C lbm_spatial clean
 	$(MAKE) -C nearn_spatial clean
