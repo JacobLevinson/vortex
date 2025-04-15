@@ -71,6 +71,16 @@ public:
   }
 };
 
+static inline int32_t vx_dot8(uint32_t a, uint32_t b) {
+  int32_t sum = 0;
+  for (int i = 0; i < 4; ++i) {
+    int8_t a_byte = static_cast<int8_t>((a >> (8 * i)) & 0xff);
+    int8_t b_byte = static_cast<int8_t>((b >> (8 * i)) & 0xff);
+    sum += a_byte * b_byte;
+  }
+  return sum;
+}
+
 static void matmul_cpu(TYPE *out, const uint32_t *A, const uint32_t *B, uint32_t width, uint32_t height) {
 
   uint32_t packed_width = (width + 3) / 4;
@@ -80,7 +90,7 @@ static void matmul_cpu(TYPE *out, const uint32_t *A, const uint32_t *B, uint32_t
       int32_t sum = 0;
       for (uint32_t k = 0; k < packed_width; ++k) {
         uint32_t packedA = A[row * packed_width + k];
-        uint32_t packedB = B[k * size + col]; // treats B as row-major
+        uint32_t packedB = B[k * width + col]; // treats B as row-major
         sum += vx_dot8(packedA, packedB);
       }
       out[row * width + col] = sum;

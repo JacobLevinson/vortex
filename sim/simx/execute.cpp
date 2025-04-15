@@ -1445,8 +1445,8 @@ void Emulator::execute(const Instr &instr, uint32_t wid, instr_trace_t *trace) {
 
           int sum = 0;
           for (int i = 0; i < 4; ++i) {
-            uint8_t a_byte = (a >> (8 * i)) & 0xff;
-            uint8_t b_byte = (b >> (8 * i)) & 0xff;
+            int8_t a_byte = (a >> (8 * i)) & 0xff;
+            int8_t b_byte = (b >> (8 * i)) & 0xff;
             sum += a_byte * b_byte;
           }
 
@@ -1457,7 +1457,10 @@ void Emulator::execute(const Instr &instr, uint32_t wid, instr_trace_t *trace) {
       default:
         std::abort();
       }
-  } break;
+      break;
+    }
+    break;
+  }
   case Opcode::TCU:
   { //TODO - make it data-type flexible
     uint32_t mem_bytes = 1;

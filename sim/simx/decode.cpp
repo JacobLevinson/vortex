@@ -590,7 +590,10 @@ std::shared_ptr<Instr> Emulator::decode(uint32_t code) const {
           instr->addSrcReg(rs1, RegType::Integer);
           instr->addSrcReg(rs2, RegType::Integer);
           break;
+        default:
+          std::abort();
         }
+        break;
       default:
         std::abort();
       }
