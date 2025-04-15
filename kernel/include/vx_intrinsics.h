@@ -239,6 +239,13 @@ inline void vx_matrix_mul()
     __asm__ volatile (".insn i 0x7b, 2, x0, 0(x0)");
 }
 
+// DOT8
+inline int vx_dot8(int a, int b) {
+  size_t ret;
+  asm volatile (".insn r 0x0B, 0, 1, %0, %1, %2" : "=r"(ret) : "r"(a), "r"(b));
+  return ret;
+}
+
 #ifdef __cplusplus
 }
 #endif
