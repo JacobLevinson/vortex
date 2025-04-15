@@ -1430,9 +1430,33 @@ void Emulator::execute(const Instr &instr, uint32_t wid, instr_trace_t *trace) {
         std::abort();
       }
     } break;
-    default:
-      std::abort();
-    }
+    case 1:
+      switch (func3) {
+      case 0: { // DOT8
+        trace->fu_type = FUType::ALU;
+        trace->alu_type = AluType::DOT8;
+        trace->src_regs[0] = {RegType::Integer, rsrc0};
+        trace->src_regs[1] = {RegType::Integer, rsrc1};
+        for (uint32_t t = thread_start; t < num_threads; ++t) {
+          if (!warp.tmask.test(t))
+            continue;
+          uint32_t a = rsdata[t][0].u;
+          uint32_t b = rsdata[t][1].u;
+
+          int sum = 0;
+          for (int i = 0; i < 4; ++i) {
+            uint8_t a_byte = (a >> (8 * i)) & 0xff;
+            uint8_t b_byte = (b >> (8 * i)) & 0xff;
+            sum += a_byte * b_byte;
+          }
+
+          rddata[t].i = sum;
+        }
+        rd_write = true;
+      } break;
+      default:
+        std::abort();
+      }
   } break;
   case Opcode::TCU:
   { //TODO - make it data-type flexible
