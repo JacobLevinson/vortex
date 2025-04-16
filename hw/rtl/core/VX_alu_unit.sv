@@ -32,6 +32,7 @@ module VX_alu_unit #(
     localparam NUM_LANES    = `NUM_ALU_LANES;
     localparam PARTIAL_BW   = (BLOCK_SIZE != `ISSUE_WIDTH) || (NUM_LANES != `NUM_THREADS);
     localparam PE_COUNT     = 1 + `EXT_M_ENABLED + 1;  // +1 for DOT8
+    localparam PE_SEL_BITS  = `CLOG2(PE_COUNT);
     localparam PE_IDX_INT   = 0;
     localparam PE_IDX_MDV   = PE_IDX_INT + `EXT_M_ENABLED;
     localparam PE_IDX_DOT8  = PE_IDX_MDV + 1;
@@ -115,7 +116,7 @@ module VX_alu_unit #(
             .commit_if  (pe_commit_if[PE_IDX_MDV])
         );
     `endif
-    
+
         VX_alu_dot8 #(
         .INSTANCE_ID (`SFORMATF(("%s-dot8%0d", INSTANCE_ID, block_idx))),
         .NUM_LANES (NUM_LANES)

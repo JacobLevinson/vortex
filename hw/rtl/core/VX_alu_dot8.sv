@@ -22,15 +22,12 @@ module VX_alu_dot8 #(
     localparam NUM_PES = `UP(NUM_LANES / PE_RATIO);
 
     `UNUSED_VAR (execute_if.data.op_type)
-    `UNUSED_VAR (execute_if.data.op_mod)
-    `UNUSED_VAR (execute_if.data.use_PC)
-    `UNUSED_VAR (execute_if.data.use_imm)
     `UNUSED_VAR (execute_if.data.tid)
     `UNUSED_VAR (execute_if.data.rs3_data)
 
     wire [NUM_LANES-1:0][2*`XLEN-1:0] data_in;
 
-    for (genvar i = 0; i < NUM_LANES; ++i) begin
+    for (genvar i = 0; i < NUM_LANES; ++i) begin : gen_data_in
         assign data_in[i][0 +: `XLEN] = execute_if.data.rs1_data[i];
         assign data_in[i][`XLEN +: `XLEN] = execute_if.data.rs2_data[i];
     end
@@ -85,7 +82,7 @@ module VX_alu_dot8 #(
     );
 
     // PEs instancing
-    for (genvar i = 0; i < NUM_PES; ++i) begin
+    for (genvar i = 0; i < NUM_PES; ++i) begin : gen_dot8_pe
         wire [31:0] a = pe_data_in[i][0 +: 32];
         wire [31:0] b = pe_data_in[i][32 +: 32];
 
@@ -107,8 +104,9 @@ module VX_alu_dot8 #(
         wire signed [31:0] sum01 = mul0 + mul1;
         wire signed [31:0] sum23 = mul2 + mul3;
         wire signed [31:0] result = sum01 + sum23;
-        `BUFFER_EX(result, c, pe_enable, LATENCY_DOT8);
-        assign pe_data_out[i] = result;
+        wire signed [31:0] final_sum;
+        `BUFFER_EX(final_sum, result, pe_enable, 0, LATENCY_DOT8);
+        assign pe_data_out[i] = final_sum;
     end
 
 endmodule
