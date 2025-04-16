@@ -520,6 +520,9 @@
 `define LATENCY_FCVT 5
 `endif
 
+// DOT8 Latency
+`define LATENCY_DOT8 2
+
 // FMA Bandwidth ratio
 `ifndef FMA_PE_RATIO
 `define FMA_PE_RATIO 1
