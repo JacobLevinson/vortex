@@ -111,6 +111,10 @@ extern int vx_mem_alloc(vx_device_h hdevice, uint64_t size, int flags, vx_buffer
   return (g_callbacks.mem_alloc)(hdevice, size, flags, hbuffer);
 }
 
+extern int vx_spatial_mem_alloc(vx_device_h hdevice, uint64_t size, int flags, vx_buffer_h *hbuffer, int Dx, int Dy, int Dz, int Tx, int Ty, int Tz) {
+  return (g_callbacks.spatial_mem_alloc)(hdevice, size, flags, hbuffer, Dx, Dy, Dz, Tx, Ty, Tz);
+}
+
 extern int vx_mem_reserve(vx_device_h hdevice, uint64_t address, uint64_t size, int flags, vx_buffer_h* hbuffer) {
   return (g_callbacks.mem_reserve)(hdevice, address, size, flags, hbuffer);
 }

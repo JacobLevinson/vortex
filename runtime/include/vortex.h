@@ -83,6 +83,9 @@ int vx_dev_caps(vx_device_h hdevice, uint32_t caps_id, uint64_t *value);
 // allocate device memory and return address
 int vx_mem_alloc(vx_device_h hdevice, uint64_t size, int flags, vx_buffer_h* hbuffer);
 
+// allocate device memory, save spatial dimensions and return address
+int vx_spatial_mem_alloc(vx_device_h hdevice, uint64_t size, int flags, vx_buffer_h *hbuffer, int Dx, int Dy, int Dz, int Tx, int Ty, int Tz);
+
 // reserve memory address range
 int vx_mem_reserve(vx_device_h hdevice, uint64_t address, uint64_t size, int flags, vx_buffer_h* hbuffer);
 

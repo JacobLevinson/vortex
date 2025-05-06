@@ -33,6 +33,9 @@ typedef struct {
   // allocate device memory and return address
   int (*mem_alloc) (vx_device_h hdevice, uint64_t size, int flags, vx_buffer_h* hbuffer);
 
+  // allocate device memory, save spatial dimensions and return address
+  int (*spatial_mem_alloc) (vx_device_h hdevice, uint64_t size, int flags, vx_buffer_h* hbuffer, int Dx, int Dy, int Dz, int Tx, int Ty, int Tz);
+
   // reserve memory address range
   int (*mem_reserve) (vx_device_h hdevice, uint64_t address, uint64_t size, int flags, vx_buffer_h* hbuffer);
 
