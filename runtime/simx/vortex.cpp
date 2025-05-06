@@ -226,6 +226,56 @@ public:
     return 0;
   }
 
+  int spatial_mem_alloc(uint64_t size, int flags, uint64_t *dev_addr, int Dx, int Dy, int Dz, int Tx, int Ty, int Tz) {
+    // grab a linear chunk just like mem_alloc does
+    CHECK_ERR(this->mem_alloc(size, flags, dev_addr), {
+      return err;
+    });
+
+    // compute bit-widths
+    int Nx = std::log2(Dx), Ny = std::log2(Dy), Nz = std::log2(Dz);
+    int TxOff = std::log2(Tx), TyOff = std::log2(Ty), TzOff = std::log2(Tz);
+    int TxIdx = Nx - TxOff, TyIdx = Ny - TyOff, TzIdx = Nz - TzOff;
+
+    // build masks & shifts
+    // accumulate bit positions instead of the x_step/y_step dance:
+    int bitpos = 0;
+    int offX = bitpos;
+    bitpos += TxOff;
+    int idxX = bitpos;
+    bitpos += TxIdx;
+    int offY = bitpos;
+    bitpos += TyOff;
+    int idxY = bitpos;
+    bitpos += TyIdx;
+    int offZ = bitpos;
+    bitpos += TzOff;
+    int idxZ = bitpos; /*bitpos += TzIdx;*/
+
+    uint32_t maskX = ((1u << TxIdx) - 1) << idxX;
+    uint32_t maskY = ((1u << TyIdx) - 1) << idxY;
+    uint32_t maskZ = ((1u << TzIdx) - 1) << idxZ;
+
+    uint32_t shiftX = idxX;
+    uint32_t shiftY = idxY;
+    uint32_t shiftZ = idxZ;
+
+    uint64_t start = *dev_addr;
+    uint64_t end = start + size;
+
+    // program the hardware
+    this->dcr_write(VX_DCR_BASE_SPATIAL_ADDR_START, uint32_t(start));
+    this->dcr_write(VX_DCR_BASE_SPATIAL_ADDR_END, uint32_t(end));
+    this->dcr_write(VX_DCR_BASE_SPATIAL_X_MASK, maskX);
+    this->dcr_write(VX_DCR_BASE_SPATIAL_Y_MASK, maskY);
+    this->dcr_write(VX_DCR_BASE_SPATIAL_Z_MASK, maskZ);
+    this->dcr_write(VX_DCR_BASE_SPATIAL_X_SHIFT, shiftX);
+    this->dcr_write(VX_DCR_BASE_SPATIAL_Y_SHIFT, shiftY);
+    this->dcr_write(VX_DCR_BASE_SPATIAL_Z_SHIFT, shiftZ);
+
+    return 0;
+  }
+
   int mem_reserve(uint64_t dev_addr, uint64_t size, int flags)
   {
     uint64_t asize = aligned_size(size, MEM_PAGE_SIZE);
