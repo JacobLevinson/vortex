@@ -25,6 +25,7 @@
 #include <future>
 #include <list>
 #include <chrono>
+#include <cmath>
 
 using namespace vortex;
 

@@ -26,6 +26,7 @@
 #include <iostream>
 #include <future>
 #include <chrono>
+#include <cmath>
 
 #include <VX_config.h>
 #ifdef VM_ENABLE
