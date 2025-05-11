@@ -219,6 +219,19 @@
 `define VX_TC_NUM                       12'hFC5
 `define VX_TC_SIZE                      12'hFC6
 
+// ray origin
+`define VX_CSR_TRIT_RO1 12'hCC5
+`define VX_CSR_TRIT_RO2 12'hCC6
+`define VX_CSR_TRIT_RO3 12'hCC7
 
+// ray direction
+`define VX_CSR_TRIT_RD1 12'hCC8
+`define VX_CSR_TRIT_RD2 12'hCC9
+`define VX_CSR_TRIT_RD3 12'hCCA
+
+// barycentric result of last TRIT
+`define VX_CSR_TRIT_B1 12'hCCB   // w1  (u)
+`define VX_CSR_TRIT_B2 12'hCCC   // w2  (v)
+`define VX_CSR_TRIT_B3 12'hCCD   // w3 = 1‑w1‑w2
 
 `endif // VX_TYPES_VH

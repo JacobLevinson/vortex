@@ -36,6 +36,14 @@ struct LsuTraceData : public ITraceData {
   LsuTraceData(uint32_t num_threads) : mem_addrs(num_threads) {}
 };
 
+struct TRITTraceData : public ITraceData {
+  using Ptr = std::shared_ptr<TRITTraceData>;
+  std::vector<std::vector<mem_addr_size_t>> mem_addrs;
+  // ctor allocates one empty inner vector per HW thread
+  TRITTraceData(uint32_t num_threads)
+      : mem_addrs(num_threads) {}
+};
+
 struct SFUTraceData : public ITraceData {
   using Ptr = std::shared_ptr<SFUTraceData>;
   Word arg1;

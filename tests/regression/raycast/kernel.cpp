@@ -1,7 +1,14 @@
 
 #include <vx_spawn.h>
 #include <vx_print.h>
+
+#define USE_TRIT 1
+
+#ifdef USE_TRIT
+#include "render_TRIT.h"
+#else
 #include "render.h"
+#endif
 
 #define BLOCK_SIZE 8
 

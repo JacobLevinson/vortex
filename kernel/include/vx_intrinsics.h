@@ -239,6 +239,20 @@ inline void vx_matrix_mul()
     __asm__ volatile (".insn i 0x7b, 2, x0, 0(x0)");
 }
 
+// TRIT : rs1 = triangle index
+//        rd  = hit distance (float in IEEE‑754 bits)
+//        rs2 is unused → hard‑wire x0
+inline uint32_t vx_trit(uint32_t tri_idx) {
+  size_t ret;
+  /*  .insn  r    opcode, func3, func7, rd, rs1, rs2
+   *          0x0B     0      1    ret  tri   x0
+   */
+  asm volatile(".insn r 0x0B, 0, 1, %0, %1, x0"
+               : "=r"(ret)      // rd
+               : "r"(tri_idx)); // rs1
+  return ret;
+}
+
 #ifdef __cplusplus
 }
 #endif

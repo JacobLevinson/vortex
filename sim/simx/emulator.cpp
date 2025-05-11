@@ -101,11 +101,9 @@ Emulator::Emulator(const Arch &arch, const DCRS &dcrs, Core* core)
 {
   std::srand(50);
 
-#ifdef EXT_V_ENABLE
-  for (uint32_t i = 0; i < arch_.num_warps(); ++i) {
-    csrs_.at(i).resize(arch.num_threads());
-  }
-#endif
+  csrs_.resize(arch_.num_warps());
+  for (uint32_t i = 0; i < arch_.num_warps(); ++i)
+    csrs_[i].resize(arch_.num_threads());
 
   this->clear();
 }
@@ -513,6 +511,18 @@ Word Emulator::get_csr(uint32_t addr, uint32_t tid, uint32_t wid) {
     return csrs_.at(wid).at(tid)[VX_CSR_VINSTRET];
 #endif
 
+  //  TRIT CSRS
+  case VX_CSR_TRIT_RO1:
+  case VX_CSR_TRIT_RO2:
+  case VX_CSR_TRIT_RO3:
+  case VX_CSR_TRIT_RD1:
+  case VX_CSR_TRIT_RD2:
+  case VX_CSR_TRIT_RD3:
+  case VX_CSR_TRIT_B1:
+  case VX_CSR_TRIT_B2:
+  case VX_CSR_TRIT_B3:
+    return csrs_.at(wid).at(tid)[addr];
+
   case VX_CSR_MHARTID:    return (core_->id() * arch_.num_warps() + wid) * arch_.num_threads() + tid;
   case VX_CSR_THREAD_ID:  return tid;
   case VX_CSR_WARP_ID:    return wid;
@@ -634,6 +644,18 @@ void Emulator::set_csr(uint32_t addr, Word value, uint32_t tid, uint32_t wid) {
     break;
   case VX_CSR_MSCRATCH:
     csr_mscratch_ = value;
+    break;
+  // TRIT CSRs
+  case VX_CSR_TRIT_RO1:
+  case VX_CSR_TRIT_RO2:
+  case VX_CSR_TRIT_RO3:
+  case VX_CSR_TRIT_RD1:
+  case VX_CSR_TRIT_RD2:
+  case VX_CSR_TRIT_RD3:
+  case VX_CSR_TRIT_B1:
+  case VX_CSR_TRIT_B2:
+  case VX_CSR_TRIT_B3:
+    csrs_.at(wid).at(tid)[addr] = value;
     break;
 
 #ifdef EXT_V_ENABLE

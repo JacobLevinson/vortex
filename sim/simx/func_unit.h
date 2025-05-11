@@ -68,14 +68,15 @@ public:
 	LsuUnit(const SimContext& ctx, Core*);
 	~LsuUnit();
 
-	void reset();
-	void tick();
+	void reset() override;
+	void tick() override;
 
 private:
 
- 	struct pending_req_t {
+	struct pending_req_t {
 		instr_trace_t* trace;
-		BitVector<> mask;
+		uint32_t count;
+		bool eop;
 	};
 
 	struct lsu_state_t {
@@ -86,14 +87,16 @@ private:
 		lsu_state_t() : pending_rd_reqs(LSUQ_IN_SIZE) {}
 
 		void clear() {
-			this->pending_rd_reqs.clear();
-			this->fence_trace = nullptr;
-			this->fence_lock = false;
+		this->pending_rd_reqs.clear();
+		this->fence_trace = nullptr;
+		this->fence_lock = false;
 		}
 	};
 
 	std::array<lsu_state_t, NUM_LSU_BLOCKS> states_;
 	uint64_t pending_loads_;
+	std::vector<mem_addr_size_t> pending_addrs_;
+	uint32_t remain_addrs_;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

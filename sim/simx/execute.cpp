@@ -1430,6 +1430,103 @@ void Emulator::execute(const Instr &instr, uint32_t wid, instr_trace_t *trace) {
         std::abort();
       }
     } break;
+    case 1:
+      switch (func3) {
+        case 0: {
+          trace->fu_type = FUType::LSU; // we model it as an LSU op
+          trace->lsu_type = LsuType::TRIT;
+          trace->src_regs[0] = {RegType::Integer, rsrc0}; // rs1 = &tri
+
+          // bit‑cast helpers (no <cstring>, no memcpy warning)
+          auto f2u = [](float f) { union{float f; uint32_t u;} v{f}; return v.u; };
+          auto u2f = [](uint32_t u) { union{uint32_t u; float f;} v{u}; return v.f; };
+
+          //---------------- create trace‑data object -----------------------
+          auto tr_data = std::make_shared<TRITTraceData>(arch_.num_threads());
+          trace->data = tr_data; // hand it to the LSU later
+
+          //---------------- tiny math helpers -----------------------------
+          struct f3 {
+            float x, y, z;
+          };
+          auto sub = [](const f3 &a, const f3 &b) {
+            return f3{a.x - b.x, a.y - b.y, a.z - b.z};
+          };
+          auto dot = [](const f3 &a, const f3 &b) {
+            return a.x * b.x + a.y * b.y + a.z * b.z;
+          };
+          auto cross = [](const f3 &a, const f3 &b) {
+            return f3{a.y * b.z - a.z * b.y,
+                      a.z * b.x - a.x * b.z,
+                      a.x * b.y - a.y * b.x};
+          };
+
+          constexpr float EPS = 1e-6f;
+
+          //  per active hardware thread
+          for (uint32_t t = thread_start; t < num_threads; ++t) {
+            if (!warp.tmask.test(t))
+              continue;
+
+            //---------------- collect the 9 floats of the triangle -------
+            uint64_t base = rsdata[t][0].u; // pointer from rs1
+            float tri[9];
+            for (int i = 0; i < 9; ++i) {
+              /* record address for LSU statistics --------------------- */
+              tr_data->mem_addrs[t].push_back({base + i * 4, 4});
+              /* functional read -------------------------------------- */
+              uint32_t word;
+              this->dcache_read(&word, base + i * 4, 4);
+              tri[i] = u2f(word);
+            }
+            const f3 v0{tri[0], tri[1], tri[2]};
+            const f3 v1{tri[3], tri[4], tri[5]};
+            const f3 v2{tri[6], tri[7], tri[8]};
+
+            // fetch ray from CSRs
+            f3 ro{u2f(get_csr(VX_CSR_TRIT_RO1, t, wid)),
+                  u2f(get_csr(VX_CSR_TRIT_RO2, t, wid)),
+                  u2f(get_csr(VX_CSR_TRIT_RO3, t, wid))};
+            f3 rd{u2f(get_csr(VX_CSR_TRIT_RD1, t, wid)),
+                  u2f(get_csr(VX_CSR_TRIT_RD2, t, wid)),
+                  u2f(get_csr(VX_CSR_TRIT_RD3, t, wid))};
+
+            // Moller–Trumbore test
+            float hitT = INFINITY, w1 = 0.f, w2 = 0.f, w3 = 0.f;
+
+            f3 e1 = sub(v1, v0);
+            f3 e2 = sub(v2, v0);
+            f3 h = cross(rd, e2);
+            float a = dot(e1, h);
+
+            if (fabsf(a) >= EPS) {
+              float f = 1.f / a;
+              f3 s = sub(ro, v0);
+              w1 = f * dot(s, h); // barycentric u
+              if (w1 >= 0.f && w1 <= 1.f) {
+                f3 q = cross(s, e1);
+                w2 = f * dot(rd, q); // barycentric v
+                if (w2 >= 0.f && w1 + w2 <= 1.f) {
+                  hitT = f * dot(e2, q);
+                  if (hitT <= EPS)
+                    hitT = INFINITY; // behind origin
+                }
+              }
+            }
+            w3 = 1.f - w1 - w2; // barycentric w
+
+            // write results 
+            rddata[t].u = f2u(hitT); // distance in rd
+
+            set_csr(VX_CSR_TRIT_B1, f2u(w1), t, wid);
+            set_csr(VX_CSR_TRIT_B2, f2u(w2), t, wid);
+            set_csr(VX_CSR_TRIT_B3, f2u(w3), t, wid);
+          }
+
+          rd_write = true; // commit rd
+        } break;
+      }
+      break;
     default:
       std::abort();
     }
