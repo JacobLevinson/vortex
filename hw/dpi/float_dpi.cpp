@@ -177,9 +177,9 @@ void dpi_ftoi(bool enable, int dst_fmt, int src_fmt, int64_t a, const svBitVecVa
     }
   } else {
     if (src_fmt) {
-      *result = sext<uint64_t>(rv_ftoi_d(a, (*frm & 0x7), fflags), 32);
+      *result = vortex::sext<uint64_t>(rv_ftoi_d(a, (*frm & 0x7), fflags), 32);
     } else {
-      *result = sext<uint64_t>(rv_ftoi_s(check_boxing(a), (*frm & 0x7), fflags), 32);
+      *result = vortex::sext<uint64_t>(rv_ftoi_s(check_boxing(a), (*frm & 0x7), fflags), 32);
     }
   }
 }
@@ -195,9 +195,9 @@ void dpi_ftou(bool enable, int dst_fmt, int src_fmt, int64_t a, const svBitVecVa
     }
   } else {
     if (src_fmt) {
-      *result = sext<uint64_t>(rv_ftou_d(a, (*frm & 0x7), fflags), 32);
+      *result = vortex::sext<uint64_t>(rv_ftou_d(a, (*frm & 0x7), fflags), 32);
     } else {
-      *result = sext<uint64_t>(rv_ftou_s(check_boxing(a), (*frm & 0x7), fflags), 32);
+      *result = vortex::sext<uint64_t>(rv_ftou_s(check_boxing(a), (*frm & 0x7), fflags), 32);
     }
   }
 }
