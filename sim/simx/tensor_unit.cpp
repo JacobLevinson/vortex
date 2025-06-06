@@ -57,28 +57,49 @@ public:
   }
 
   void hmma844(uint32_t wid,
-               uint32_t fmt, uint32_t step,
-               const std::vector<reg_data_t>& rs1_data,
-               const std::vector<reg_data_t>& rs2_data,
-               const std::vector<reg_data_t>& rs3_data,
-               std::vector<reg_data_t>& rd_data,
-               ExeTraceData* trace_data) {
-    uint32_t num_octects = arch_.num_threads() / 8;
-    uint32_t threadgroup_lane_offset = 4 * num_octects;
-    for (uint32_t i = 0; i < num_octects; ++i) {
-      std::vector<reg_data_t> octet_A(8);
-      std::vector<reg_data_t> octet_B(8);
-      std::vector<reg_data_t> octet_C(8);
-      std::vector<reg_data_t> octet_D(8);
+                                 uint32_t fmt,
+                                 uint32_t step,
+                                 const std::vector<reg_data_t> &rs1_data,
+                                 const std::vector<reg_data_t> &rs2_data,
+                                 const std::vector<reg_data_t> &rs3_data,
+                                 std::vector<reg_data_t> &rd_data,
+                                 ExeTraceData *trace_data) {
+    // 1) pull the full 32 lanes of each VReg into temporaries
+    float va_data[32], vb_data[32], vc_data[32];
+    for (int lane = 0; lane < 32; lane++) {
+      va_data[lane] = rs1_data[lane].f32; // 8×4 block of A
+      vb_data[lane] = rs2_data[lane].f32; // 2×(4×4) blocks of B
+      vc_data[lane] = rs3_data[lane].f32; // 8×4 block of C (or prior D)
+    }
 
-      for (uint32_t j = 0; j < 8; ++j) {
-        octet_A[j] = rs1_data[i * 8 + j];
-        octet_B[j] = rs2_data[i * 8 + j];
-        octet_C[j] = rs3_data[i * 8 + j];
-        octet_D[j] = rd_data[i * 8 + j];
+    // 2) pick which 4×4 sub-tile of B to use
+    int cb = step & 3;   // bits [1:0]
+    int half = cb & 1;   // bit 0 → choose low or high half
+    int off = half * 16; // each half is 4×4 = 16 floats
+
+    // 3) extract subB[4][4]
+    float subB[4][4];
+    for (int x = 0; x < 4; x++) {
+      for (int y = 0; y < 4; y++) {
+        subB[x][y] = vb_data[off + x * 4 + y];
       }
     }
 
+    // 4) for each lane (32 lanes = 8×4 tile) do the dot-product + add
+    for (int lane = 0; lane < 32; lane++) {
+      int x = lane / 4; // row in 8×4
+      int y = lane % 4; // col in 8×4
+
+      float sum = 0.0f;
+      for (int z = 0; z < 4; z++) {
+        // subA[x][z]  == va_data[x*4 + z]
+        // subB[z][y]
+        sum += va_data[x * 4 + z] * subB[z][y];
+      }
+
+      // acc = vc_data[lane]
+      rd_data[lane].f32 = vc_data[lane] + sum;
+    }
   }
 
   const PerfStats& perf_stats() const {
