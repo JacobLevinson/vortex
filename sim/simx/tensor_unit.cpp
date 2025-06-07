@@ -58,47 +58,59 @@ public:
 
   void hmma844(uint32_t wid,
                                  uint32_t fmt,
-                                 uint32_t step,
+                                 uint32_t step_idx,
                                  const std::vector<reg_data_t> &rs1_data,
                                  const std::vector<reg_data_t> &rs2_data,
                                  const std::vector<reg_data_t> &rs3_data,
                                  std::vector<reg_data_t> &rd_data,
                                  ExeTraceData *trace_data) {
-    // 1) pull the full 32 lanes of each VReg into temporaries
-    float va_data[32], vb_data[32], vc_data[32];
-    for (int lane = 0; lane < 32; lane++) {
-      va_data[lane] = rs1_data[lane].f32; // 8×4 block of A
-      vb_data[lane] = rs2_data[lane].f32; // 2×(4×4) blocks of B
-      vc_data[lane] = rs3_data[lane].f32; // 8×4 block of C (or prior D)
+    //
+    // 1) Unpack va (rs1) and vc (rs3) into subA[8][4] and acc[8][4]
+    //
+    float subA[8][4], acc[8][4];
+    for (int x = 0; x < 8; ++x) {
+      for (int y = 0; y < 4; ++y) {
+        subA[x][y] = rs1_data[x * 4 + y].f32; // va.data[x*4 + y]
+        acc[x][y] = rs3_data[x * 4 + y].f32;  // vc.data[x*4 + y]
+      }
     }
 
-    // 2) pick which 4×4 sub-tile of B to use
-    int cb = step & 3;   // bits [1:0]
-    int half = cb & 1;   // bit 0 → choose low or high half
-    int off = half * 16; // each half is 4×4 = 16 floats
+    //
+    // 2) Decode which 4×4 slice of vb to use
+    //
+    int cb = step_idx & 3; // low two bits
+    int half = cb & 1;     // bit 0
+    int off = half * 16;   // each half = 4×4 = 16 floats
 
-    // 3) extract subB[4][4]
+    //
+    // 3) Unpack vb into subB[4][4]
+    //
     float subB[4][4];
-    for (int x = 0; x < 4; x++) {
-      for (int y = 0; y < 4; y++) {
-        subB[x][y] = vb_data[off + x * 4 + y];
+    for (int x = 0; x < 4; ++x) {
+      for (int y = 0; y < 4; ++y) {
+        subB[x][y] = rs2_data[off + x * 4 + y].f32; // vb.data[off + x*4 + y]
       }
     }
 
-    // 4) for each lane (32 lanes = 8×4 tile) do the dot-product + add
-    for (int lane = 0; lane < 32; lane++) {
-      int x = lane / 4; // row in 8×4
-      int y = lane % 4; // col in 8×4
-
-      float sum = 0.0f;
-      for (int z = 0; z < 4; z++) {
-        // subA[x][z]  == va_data[x*4 + z]
-        // subB[z][y]
-        sum += va_data[x * 4 + z] * subB[z][y];
+    //
+    // 4) Compute the 8×4×4 MAC: vd_data[x*4+y] = acc[x][y] + sum_z subA[x][z]*subB[z][y]
+    //
+    float vd_data[32] = {0};
+    for (int x = 0; x < 8; ++x) {
+      for (int y = 0; y < 4; ++y) {
+        float sum = 0.0f;
+        for (int z = 0; z < 4; ++z) {
+          sum += subA[x][z] * subB[z][y];
+        }
+        vd_data[x * 4 + y] = acc[x][y] + sum; // vd.data[x*4 + y]
       }
+    }
 
-      // acc = vc_data[lane]
-      rd_data[lane].f32 = vc_data[lane] + sum;
+    //
+    // 5) Write the 32-lane result back into rd_data
+    //
+    for (int lane = 0; lane < 32; ++lane) {
+      rd_data[lane].f32 = vd_data[lane];
     }
   }
 
