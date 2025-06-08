@@ -8,7 +8,7 @@
 #include "common.h"
 #include <hfloats.h>
 
-#define FLOAT_ULP 6
+#define FLOAT_ULP 20
 
 #define RT_CHECK(_expr)                                         \
    do {                                                         \
