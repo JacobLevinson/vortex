@@ -585,16 +585,19 @@ Instr::Ptr Emulator::decode(uint32_t code) const {
         switch (funct3) {
         case 0: { // HMMA844
           uint32_t fmt = rd;
-          uint32_t steps    = rs1 >> 1;
-          uint32_t step     = steps % 4;
-          uint32_t set      = steps / 4;
-          uint32_t rd_pair  = rs1 & 0x1;
-          uint32_t use_d    = rs2;
-          uint32_t base_rd  = (use_d ? 16 : 0) + (step * 2 + rd_pair); // C/D
-          uint32_t base_rs1 = 8  + set; // A
-          uint32_t base_rs2 = 24 + set; // B
-          uint32_t base_rs3 = 0  + step; // C
-          instr->setImm((fmt << 2) + step); // fmt + step
+          uint32_t step = rs1 & 0x7;
+          uint32_t set = rs1 >> 3;
+          uint32_t rt = step / 4;
+          uint32_t cb = step % 4;
+          uint32_t idxA = rt * 4 + set;
+          uint32_t idxB = 2 * set + (cb / 2);
+          uint32_t idxC = step;
+          uint32_t use_d = rs2;
+          uint32_t base_rd = (use_d ? 16 : 0) + step; // C/D
+          uint32_t base_rs1 = 8 + idxA;               // A
+          uint32_t base_rs2 = 24 + idxB;              // B
+          uint32_t base_rs3 = 0 + idxC;               // C
+          instr->setImm((fmt << 2) + step);           // fmt + step
           instr->setDestReg(base_rd, RegType::Float);
           instr->addSrcReg(base_rs1, RegType::Float);
           instr->addSrcReg(base_rs2, RegType::Float);
