@@ -49,6 +49,22 @@ run-rtlsim:
 	$(MAKE) -C sgemm2x run-rtlsim
 	$(MAKE) -C stencil3d run-rtlsim
 
+run-opaesimx:
+	$(MAKE) -C basic run-opaesimx
+	$(MAKE) -C demo run-opaesimx
+	$(MAKE) -C dogfood run-opaesimx
+	$(MAKE) -C mstress run-opaesimx
+	$(MAKE) -C io_addr run-opaesimx
+	$(MAKE) -C printf run-opaesimx
+	$(MAKE) -C diverge run-opaesimx
+	$(MAKE) -C sort run-opaesimx
+	$(MAKE) -C fence run-opaesimx
+	$(MAKE) -C vecaddx run-opaesimx
+	$(MAKE) -C sgemmx run-opaesimx
+	$(MAKE) -C conv3x run-opaesimx
+	$(MAKE) -C sgemm2x run-opaesimx
+	$(MAKE) -C stencil3d run-opaesimx
+
 clean:
 	$(MAKE) -C basic clean
 	$(MAKE) -C demo clean

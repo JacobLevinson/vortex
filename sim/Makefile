@@ -8,10 +8,12 @@ all:
 	$(MAKE) -C simx
 	$(MAKE) -C rtlsim
 	$(MAKE) -C opaesim
+	$(MAKE) -C opaesimx
 	$(MAKE) -C xrtsim
 
 clean:
 	$(MAKE) -C simx clean
 	$(MAKE) -C rtlsim clean
 	$(MAKE) -C opaesim clean
+	$(MAKE) -C opaesimx clean
 	$(MAKE) -C xrtsim clean

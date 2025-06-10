@@ -26,7 +26,7 @@ show_help()
 {
     show_usage
     echo "  where"
-    echo "--driver: gpu, simx, rtlsim, oape, xrt"
+    echo "--driver: gpu, simx, rtlsim, opae, opaesimx, xrt"
     echo "--app: any subfolder test under regression or opencl"
     echo "--class: 0=disable, 1=pipeline, 2=memsys"
     echo "--rebuild: 0=disable, 1=force, 2=auto, 3=temp"
@@ -87,7 +87,7 @@ parse_args() {
 set_driver_path() {
     case $DRIVER in
         gpu) DRIVER_PATH="" ;;
-        simx|rtlsim|opae|xrt) DRIVER_PATH="$ROOT_DIR/runtime/$DRIVER" ;;
+        simx|rtlsim|opae|opaesimx|xrt) DRIVER_PATH="$ROOT_DIR/runtime/$DRIVER" ;;
         *) echo "Invalid driver: $DRIVER"; exit 1 ;;
     esac
 }
